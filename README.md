@@ -6,12 +6,27 @@ API test automation untuk [labs.hendri.me](https://labs.hendri.me) (base API: `h
 
 ## Cakupan Test
 
-| Folder | Request | Isi |
-|---|---|---|
-| `01 - Auth` | 1 | `POST /api/auth/login`, token otomatis disimpan ke variable `token` |
-| `02 - Auth Negative` | 4 | Password salah (401), format email salah (400), tanpa token (401), token invalid (401) |
-| `03 - Labs CRUD` | 9 | Create, Get All, Get by ID, Update, cek hasil update, Update ID tidak ada (404), Delete, Get setelah delete (404), Delete ulang (404) |
-| `04 - Data-Driven (CSV)` | 1 × 13 baris | `POST /api/labs` dengan data dari `data/labs-data.csv` |
+Collection: [`collections/script-labs-api.postman_collection.json`](collections/script-labs-api.postman_collection.json) berisi **15 request** dalam 4 folder.
+
+| # | Folder | Request | Method | Endpoint | Expected |
+|---|---|---|---|---|---|
+| 1 | `01 - Auth` | Login - Valid Credentials (simpan token) | `POST` | `/api/auth/login` | 200 |
+| 2 | `02 - Auth Negative` | Login - Wrong Password | `POST` | `/api/auth/login` | 401 |
+| 3 | | Login - Invalid Email Format | `POST` | `/api/auth/login` | 400 |
+| 4 | | Get All Labs - Without Token | `GET` | `/api/labs` | 401 |
+| 5 | | Get All Labs - Invalid Token | `GET` | `/api/labs` | 401 |
+| 6 | `03 - Labs CRUD` | Create Lab | `POST` | `/api/labs` | 201 |
+| 7 | | Get All Labs | `GET` | `/api/labs` | 200 |
+| 8 | | Get Lab by ID | `GET` | `/api/labs/{{lab_id}}` | 200 |
+| 9 | | Update Lab | `PUT` | `/api/labs/{{lab_id}}` | 200 |
+| 10 | | Get Lab by ID - Verify Update | `GET` | `/api/labs/{{lab_id}}` | 200 |
+| 11 | | Update Lab - Non-existent ID | `PUT` | `/api/labs/999999999` | 404 |
+| 12 | | Delete Lab | `DELETE` | `/api/labs/{{lab_id}}` | 200 |
+| 13 | | Get Lab by ID - After Delete | `GET` | `/api/labs/{{lab_id}}` | 404 |
+| 14 | | Delete Lab - Already Deleted | `DELETE` | `/api/labs/{{lab_id}}` | 404 |
+| 15 | `04 - Data-Driven (CSV)` | Create Lab - Data Driven (CSV) | `POST` | `/api/labs` | dari CSV (14 baris) |
+
+Semua URL memakai variable `{{baseUrl}}`. Hasil eksekusi setiap request (method, URL, status, waktu) bisa dilihat di log step *Run Auth + CRUD tests* pada tab [Actions](https://github.com/pramikarega/final-assignment-api-automation/actions/workflows/api-test.yml).
 
 Setiap request punya assertion untuk **status code**, **response body**, dan **response time** (batas diatur lewat variable `max_response_time`, default 5000 ms).
 
