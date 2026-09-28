@@ -100,16 +100,20 @@ Set di **Settings → Secrets and variables → Actions → New repository secre
 
 ## Skenario Gatekeeper
 
-Branch `demo/gatekeeper-fail` sengaja menambahkan satu baris di CSV yang mengharapkan API **menerima** title 300 karakter (`expected_status` 201), padahal aturan API maksimal 255 karakter sehingga API membalas 400. Ini mensimulasikan perubahan yang tidak sesuai spesifikasi.
+Bukti bahwa pipeline berfungsi sebagai gatekeeper ada di [Pull Request #1](https://github.com/pramikarega/final-assignment-api-automation/pull/1). `main` dilindungi branch protection yang mewajibkan check `Newman API Tests` lulus sebelum merge.
 
-Saat branch tersebut dibuka sebagai Pull Request ke `main`, workflow gagal (❌) dan PR tidak bisa di-merge karena branch protection mewajibkan check `Newman API Tests` lulus. Sementara itu, run di `main` tetap hijau (✅).
+| Tahap | Commit | Hasil CI | Bukti |
+|---|---|---|---|
+| 1. Test sengaja dibuat salah: baris CSV mengharapkan title 300 karakter **diterima** (201), padahal API membatasi 255 karakter | `d58661a` | ❌ 2 assertion gagal di iterasi 14, merge diblokir | [actions-fail-gatekeeper.png](docs/screenshots/actions-fail-gatekeeper.png), [pr-blocked.png](docs/screenshots/pr-blocked.png) |
+| 2. Test diperbaiki: title 300 karakter harus **ditolak** (400, "Title cannot exceed 255 characters") | `c372c77` | ✅ semua check lulus, PR bisa di-merge | [pr-fixed.png](docs/screenshots/pr-fixed.png) |
 
-Aktifkan branch protection di **Settings → Branches → Add rule** untuk `main`: centang *Require status checks to pass before merging* lalu pilih `Newman API Tests`.
+Pengaturan branch protection: **Settings → Branches → Add rule** untuk `main`, centang *Require status checks to pass before merging*, pilih `Newman API Tests`.
 
 ## Bukti Run
 
-Screenshot hasil run ada di [`docs/screenshots/`](docs/screenshots/):
+Screenshot ada di [`docs/screenshots/`](docs/screenshots/):
 
-- `actions-pass.png`: run di `main` berhasil
-- `actions-fail-gatekeeper.png`: run di PR gatekeeper gagal
-- `pr-blocked.png`: PR tertahan karena check gagal
+- [`actions-pass.png`](docs/screenshots/actions-pass.png): run di `main` berhasil
+- [`actions-fail-gatekeeper.png`](docs/screenshots/actions-fail-gatekeeper.png): run di PR gatekeeper gagal
+- [`pr-blocked.png`](docs/screenshots/pr-blocked.png): PR tertahan karena check gagal
+- [`pr-fixed.png`](docs/screenshots/pr-fixed.png): setelah diperbaiki, check lulus dan PR siap di-merge
