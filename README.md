@@ -132,3 +132,4 @@ Screenshot ada di [`docs/screenshots/`](docs/screenshots/):
 - [`actions-fail-gatekeeper.png`](docs/screenshots/actions-fail-gatekeeper.png): run di PR gatekeeper gagal
 - [`pr-blocked.png`](docs/screenshots/pr-blocked.png): PR tertahan karena check gagal
 - [`pr-fixed.png`](docs/screenshots/pr-fixed.png): setelah diperbaiki, check lulus dan PR siap di-merge
+- [`postman-login.png`](docs/screenshots/postman-login.png): collection di-import ke Postman, login 200 OK dengan 5/5 test lulus
