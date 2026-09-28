@@ -12,4 +12,4 @@ whitespace_only_title,invalid,"@repeat( ,5)",Title only contains spaces,400,Titl
 empty_description,invalid,Description is empty,,400,Description cannot be empty
 missing_title_field,invalid,@omit,Title field is not sent,400,Title is required
 missing_description_field,invalid,Description field is not sent,@omit,400,Description is required
-gatekeeper_title_300_chars,gatekeeper,"@repeat(G,300)",Intentional wrong expectation to prove CI blocks the merge,201,
+gatekeeper_title_300_chars,invalid,"@repeat(G,300)",Title over 255 chars must be rejected,400,Title cannot exceed 255 characters
