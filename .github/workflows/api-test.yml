@@ -1,0 +1,76 @@
+name: API Test Automation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  api-test:
+    name: Newman API Tests
+    runs-on: ubuntu-latest
+
+    # Kredensial login diambil dari GitHub Secrets, tidak di-hardcode
+    env:
+      API_EMAIL: ${{ secrets.API_EMAIL }}
+      API_PASSWORD: ${{ secrets.API_PASSWORD }}
+      COLLECTION: collections/script-labs-api.postman_collection.json
+      ENVIRONMENT: environments/script-labs.postman_environment.json
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies (Newman + htmlextra reporter)
+        run: npm ci
+
+      - name: Verify secrets are configured
+        run: |
+          if [ -z "$API_EMAIL" ] || [ -z "$API_PASSWORD" ]; then
+            echo "::error::Secrets API_EMAIL dan/atau API_PASSWORD belum di-set (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+
+      - name: Run Auth + CRUD tests
+        run: |
+          npx newman run "$COLLECTION" \
+            -e "$ENVIRONMENT" \
+            --env-var "email=$API_EMAIL" \
+            --env-var "password=$API_PASSWORD" \
+            --folder "01 - Auth" \
+            --folder "02 - Auth Negative" \
+            --folder "03 - Labs CRUD" \
+            -r cli,htmlextra,junit \
+            --reporter-htmlextra-export reports/crud-report.html \
+            --reporter-junit-export reports/crud-junit.xml
+
+      - name: Run Data-Driven tests (CSV)
+        # Tetap dijalankan walau step sebelumnya gagal, supaya laporan lengkap
+        if: ${{ !cancelled() }}
+        run: |
+          npx newman run "$COLLECTION" \
+            -e "$ENVIRONMENT" \
+            --env-var "email=$API_EMAIL" \
+            --env-var "password=$API_PASSWORD" \
+            --folder "01 - Auth" \
+            --folder "04 - Data-Driven (CSV)" \
+            -d data/labs-data.csv \
+            -r cli,htmlextra,junit \
+            --reporter-htmlextra-export reports/ddt-report.html \
+            --reporter-junit-export reports/ddt-junit.xml
+
+      - name: Upload test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-reports
+          path: reports/
+          retention-days: 14
