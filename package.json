@@ -1,0 +1,15 @@
+{
+  "name": "final-assignment-api-automation",
+  "version": "1.0.0",
+  "description": "Postman + Newman API test automation for Script Labs (labs.hendri.me) with GitHub Actions CI/CD",
+  "private": true,
+  "scripts": {
+    "test:crud": "newman run collections/script-labs-api.postman_collection.json -e environments/local.postman_environment.json --folder \"01 - Auth\" --folder \"02 - Auth Negative\" --folder \"03 - Labs CRUD\" -r cli,htmlextra --reporter-htmlextra-export reports/crud-report.html",
+    "test:ddt": "newman run collections/script-labs-api.postman_collection.json -e environments/local.postman_environment.json --folder \"01 - Auth\" --folder \"04 - Data-Driven (CSV)\" -d data/labs-data.csv -r cli,htmlextra --reporter-htmlextra-export reports/ddt-report.html",
+    "test": "npm run test:crud && npm run test:ddt"
+  },
+  "devDependencies": {
+    "newman": "^6.2.1",
+    "newman-reporter-htmlextra": "^1.23.1"
+  }
+}

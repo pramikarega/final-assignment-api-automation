@@ -1,0 +1,1007 @@
+{
+  "info": {
+    "name": "Script Labs API - Final Assignment",
+    "description": "API test suite untuk https://labs.hendri.me (API: https://api-script-labs.hendri.me).\n\nFolder:\n- 01 - Auth: login & simpan token otomatis\n- 02 - Auth Negative: login gagal & akses tanpa/invalid token\n- 03 - Labs CRUD: create, read, update, delete /api/labs\n- 04 - Data-Driven (CSV): jalankan bersama data/labs-data.csv\n\nSemua request /api/labs memakai Bearer {{token}} yang diwariskan dari level collection.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "01 - Auth",
+      "description": "Login dan simpan token ke environment.",
+      "item": [
+        {
+          "name": "Login - Valid Credentials",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Fail fast bila kredensial belum di-set (lokal: environment file, CI: GitHub Secrets)",
+                  "if (!pm.environment.get(\"email\") || !pm.environment.get(\"password\")) {",
+                  "    throw new Error(\"Environment variable 'email' / 'password' kosong. Isi via environment lokal atau --env-var.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxRt = Number(pm.environment.get(\"max_response_time\")) || 5000;",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response body: success true & message 'Login successful'\", function () {",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "    pm.expect(json.message).to.eql(\"Login successful\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response body: token is a valid JWT string\", function () {",
+                  "    pm.expect(json.data.token).to.be.a(\"string\");",
+                  "    pm.expect(json.data.token.split(\".\")).to.have.lengthOf(3);",
+                  "});",
+                  "",
+                  "pm.test(\"Response body: user email matches login email\", function () {",
+                  "    pm.expect(json.data.user.email).to.eql(pm.environment.get(\"email\"));",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is below \" + maxRt + \" ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxRt);",
+                  "});",
+                  "",
+                  "// Simpan token & user id secara otomatis -> dipakai request berikutnya",
+                  "if (json.data && json.data.token) {",
+                  "    pm.environment.set(\"token\", json.data.token);",
+                  "    pm.environment.set(\"user_id\", json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Login dengan kredensial dari environment (di CI diisi dari GitHub Secrets). Token disimpan otomatis ke environment variable `token` dan dipakai oleh semua request /api/labs lewat Bearer auth di level collection.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{email}}\",\n    \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 - Auth Negative",
+      "description": "Skenario negatif autentikasi.",
+      "item": [
+        {
+          "name": "Login - Wrong Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxRt = Number(pm.environment.get(\"max_response_time\")) || 5000;",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test(\"Status code is 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test(\"Response body: AUTH_FAILED & no token returned\", function () {",
+                  "    pm.expect(json.success).to.eql(false);",
+                  "    pm.expect(json.error.code).to.eql(\"AUTH_FAILED\");",
+                  "    pm.expect(json.error.message).to.eql(\"Invalid email or password\");",
+                  "    pm.expect(json).to.not.have.nested.property(\"data.token\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is below \" + maxRt + \" ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxRt);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{email}}\",\n    \"password\": \"WrongPassword123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login - Invalid Email Format",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxRt = Number(pm.environment.get(\"max_response_time\")) || 5000;",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Response body: validation error for email\", function () {",
+                  "    pm.expect(json.success).to.eql(false);",
+                  "    pm.expect(json.error.message).to.include(\"valid email\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is below \" + maxRt + \" ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxRt);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"not-an-email\",\n    \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Labs - Without Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxRt = Number(pm.environment.get(\"max_response_time\")) || 5000;",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test(\"Status code is 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test(\"Response body: 'No token provided'\", function () {",
+                  "    pm.expect(json.message).to.eql(\"No token provided\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is below \" + maxRt + \" ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxRt);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/labs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "labs"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Labs - Invalid Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxRt = Number(pm.environment.get(\"max_response_time\")) || 5000;",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test(\"Status code is 401\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test(\"Response body: 'Invalid token'\", function () {",
+                  "    pm.expect(json.message).to.eql(\"Invalid token\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is below \" + maxRt + \" ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxRt);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/labs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "labs"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "invalid.token.value",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 - Labs CRUD",
+      "description": "Alur CRUD lengkap untuk /api/labs memakai token hasil login.",
+      "item": [
+        {
+          "name": "Create Lab",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Data unik per run supaya tidak bentrok dengan data lain",
+                  "const stamp = Date.now();",
+                  "pm.environment.set(\"lab_title\", \"Newman CRUD Lab \" + stamp);",
+                  "pm.environment.set(\"lab_description\", \"Created by Newman CI run \" + stamp);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxRt = Number(pm.environment.get(\"max_response_time\")) || 5000;",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Response body: lab created with correct data\", function () {",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "    pm.expect(json.message).to.eql(\"Lab added successfully\");",
+                  "    pm.expect(json.data.id).to.be.a(\"number\");",
+                  "    pm.expect(json.data.title).to.eql(pm.environment.get(\"lab_title\"));",
+                  "    pm.expect(json.data.description).to.eql(pm.environment.get(\"lab_description\"));",
+                  "    pm.expect(json.data.user_id).to.eql(pm.environment.get(\"user_id\"));",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is below \" + maxRt + \" ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxRt);",
+                  "});",
+                  "",
+                  "pm.environment.set(\"lab_id\", json.data && json.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/labs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "labs"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"{{lab_title}}\",\n    \"description\": \"{{lab_description}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Labs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxRt = Number(pm.environment.get(\"max_response_time\")) || 5000;",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response body: data is an array with pagination\", function () {",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "    pm.expect(json.data).to.be.an(\"array\");",
+                  "    pm.expect(json.pagination).to.include.keys(\"page\", \"limit\", \"total\", \"totalPages\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response body: contains the newly created lab\", function () {",
+                  "    const ids = json.data.map(function (lab) { return lab.id; });",
+                  "    pm.expect(ids).to.include(Number(pm.environment.get(\"lab_id\")));",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is below \" + maxRt + \" ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxRt);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/labs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "labs"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Lab by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxRt = Number(pm.environment.get(\"max_response_time\")) || 5000;",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response body: returns the requested lab\", function () {",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "    pm.expect(json.data.id).to.eql(Number(pm.environment.get(\"lab_id\")));",
+                  "    pm.expect(json.data.title).to.eql(pm.environment.get(\"lab_title\"));",
+                  "    pm.expect(json.data).to.include.keys(\"id\", \"title\", \"description\", \"user_id\", \"created_at\", \"updated_at\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is below \" + maxRt + \" ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxRt);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/labs/{{lab_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "labs",
+                "{{lab_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Lab",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set(\"lab_title_updated\", pm.environment.get(\"lab_title\") + \" (updated)\");",
+                  "pm.environment.set(\"lab_description_updated\", \"Updated by Newman CI run\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxRt = Number(pm.environment.get(\"max_response_time\")) || 5000;",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response body: lab updated with new values\", function () {",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "    pm.expect(json.message).to.eql(\"lab updated successfully\");",
+                  "    pm.expect(json.data.id).to.eql(Number(pm.environment.get(\"lab_id\")));",
+                  "    pm.expect(json.data.title).to.eql(pm.environment.get(\"lab_title_updated\"));",
+                  "    pm.expect(json.data.description).to.eql(pm.environment.get(\"lab_description_updated\"));",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is below \" + maxRt + \" ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxRt);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/labs/{{lab_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "labs",
+                "{{lab_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"{{lab_title_updated}}\",\n    \"description\": \"{{lab_description_updated}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Lab by ID - Verify Update",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxRt = Number(pm.environment.get(\"max_response_time\")) || 5000;",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response body: update is persisted\", function () {",
+                  "    pm.expect(json.data.title).to.eql(pm.environment.get(\"lab_title_updated\"));",
+                  "    pm.expect(json.data.description).to.eql(pm.environment.get(\"lab_description_updated\"));",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is below \" + maxRt + \" ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxRt);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/labs/{{lab_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "labs",
+                "{{lab_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Lab - Non-existent ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxRt = Number(pm.environment.get(\"max_response_time\")) || 5000;",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test(\"Status code is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Response body: 'lab not found or unauthorized'\", function () {",
+                  "    pm.expect(json.success).to.eql(false);",
+                  "    pm.expect(json.error.message).to.eql(\"lab not found or unauthorized\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is below \" + maxRt + \" ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxRt);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/labs/999999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "labs",
+                "999999999"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Should not exist\",\n    \"description\": \"Negative test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Lab",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxRt = Number(pm.environment.get(\"max_response_time\")) || 5000;",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response body: correct lab deleted\", function () {",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "    pm.expect(json.message).to.eql(\"lab deleted successfully\");",
+                  "    pm.expect(json.data.id).to.eql(Number(pm.environment.get(\"lab_id\")));",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is below \" + maxRt + \" ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxRt);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/labs/{{lab_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "labs",
+                "{{lab_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Lab by ID - After Delete",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxRt = Number(pm.environment.get(\"max_response_time\")) || 5000;",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test(\"Status code is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Response body: 'lab not found'\", function () {",
+                  "    pm.expect(json.success).to.eql(false);",
+                  "    pm.expect(json.error.message).to.eql(\"lab not found\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is below \" + maxRt + \" ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxRt);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/labs/{{lab_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "labs",
+                "{{lab_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Lab - Already Deleted",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxRt = Number(pm.environment.get(\"max_response_time\")) || 5000;",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test(\"Status code is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Response body: 'lab not found or unauthorized'\", function () {",
+                  "    pm.expect(json.success).to.eql(false);",
+                  "    pm.expect(json.error.message).to.eql(\"lab not found or unauthorized\");",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is below \" + maxRt + \" ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxRt);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/labs/{{lab_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "labs",
+                "{{lab_id}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 - Data-Driven (CSV)",
+      "description": "Jalankan folder 01 + 04 dengan iteration data data/labs-data.csv.",
+      "item": [
+        {
+          "name": "Create Lab - Data Driven (CSV)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Bangun body dari data CSV (pakai JSON.stringify agar karakter spesial/quote aman)",
+                  "function resolve(value) {",
+                  "    if (value === undefined || value === null) return \"\";",
+                  "    value = String(value);",
+                  "    const m = value.match(/^@repeat\\((.),(\\d+)\\)$/);",
+                  "    if (m) return m[1].repeat(Number(m[2]));",
+                  "    return value;",
+                  "}",
+                  "",
+                  "const body = {};",
+                  "[\"title\", \"description\"].forEach(function (field) {",
+                  "    const raw = pm.iterationData.get(field);",
+                  "    if (raw !== \"@omit\") body[field] = resolve(raw);",
+                  "});",
+                  "",
+                  "pm.variables.set(\"ddt_body\", JSON.stringify(body));",
+                  "pm.variables.set(\"ddt_title\", body.title);",
+                  "pm.variables.set(\"ddt_description\", body.description);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const maxRt = Number(pm.environment.get(\"max_response_time\")) || 5000;",
+                  "const json = pm.response.json();",
+                  "",
+                  "const scenario = pm.iterationData.get(\"scenario\");",
+                  "const type = pm.iterationData.get(\"type\");",
+                  "const expectedStatus = Number(pm.iterationData.get(\"expected_status\"));",
+                  "const expectedMessage = pm.iterationData.get(\"expected_message\");",
+                  "",
+                  "pm.test(\"[\" + type + \"] \" + scenario + \" -> status code is \" + expectedStatus, function () {",
+                  "    pm.response.to.have.status(expectedStatus);",
+                  "});",
+                  "",
+                  "if (expectedStatus === 201) {",
+                  "    pm.test(\"[\" + type + \"] \" + scenario + \" -> response body contains saved data\", function () {",
+                  "        pm.expect(json.success).to.eql(true);",
+                  "        pm.expect(json.data.id).to.be.a(\"number\");",
+                  "        // API melakukan trim pada input",
+                  "        pm.expect(json.data.title).to.eql(String(pm.variables.get(\"ddt_title\")).trim());",
+                  "        pm.expect(json.data.description).to.eql(String(pm.variables.get(\"ddt_description\")).trim());",
+                  "    });",
+                  "} else {",
+                  "    pm.test(\"[\" + type + \"] \" + scenario + \" -> error message: \" + expectedMessage, function () {",
+                  "        pm.expect(json.success).to.eql(false);",
+                  "        pm.expect(json.error.message).to.include(expectedMessage);",
+                  "    });",
+                  "}",
+                  "",
+                  "pm.test(\"Response time is below \" + maxRt + \" ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(maxRt);",
+                  "});",
+                  "",
+                  "// Cleanup: hapus data yang berhasil dibuat supaya environment tetap bersih",
+                  "if (pm.response.code === 201 && json.data && json.data.id) {",
+                  "    pm.sendRequest({",
+                  "        url: pm.environment.get(\"baseUrl\") + \"/api/labs/\" + json.data.id,",
+                  "        method: \"DELETE\",",
+                  "        header: { Authorization: \"Bearer \" + pm.environment.get(\"token\") }",
+                  "    }, function (err, res) {",
+                  "        if (err || res.code !== 200) console.warn(\"Cleanup gagal untuk lab id \" + json.data.id);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/labs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "labs"
+              ]
+            },
+            "description": "Dijalankan dengan file data/labs-data.csv. Kolom: scenario, type, title, description, expected_status, expected_message.\n\nNilai khusus di CSV:\n- `@repeat(X,N)` -> huruf X diulang N kali (untuk uji panjang maksimum)\n- `@omit` -> field tidak dikirim sama sekali\n- sel kosong -> string kosong \"\"",
+            "body": {
+              "mode": "raw",
+              "raw": "{{ddt_body}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+scenario,type,title,description,expected_status,expected_message
+normal_input,valid,Login Automation Script,Automated test for login flow with valid credentials,201,
+special_characters,valid,QA Script #2 - Checkout & Payment (v1.0),"Covers ""quotes"", symbols !@#$%*() and numbers 12345",201,
+title_min_1_char,edge,A,B,201,
+title_max_255_chars,edge,"@repeat(T,255)",Title at maximum allowed length,201,
+description_max_1000_chars,edge,Max description length,"@repeat(D,1000)",201,
+title_leading_trailing_spaces,edge,"   Trimmed Title   ",Title should be trimmed by the API,201,
+title_256_chars,invalid,"@repeat(T,256)",Title over maximum length,400,Title cannot exceed 255 characters
+description_1001_chars,invalid,Description too long,"@repeat(D,1001)",400,Description cannot exceed 1000 characters
+empty_title,invalid,,Title is empty,400,Title cannot be empty
+whitespace_only_title,invalid,"@repeat( ,5)",Title only contains spaces,400,Title cannot be empty
+empty_description,invalid,Description is empty,,400,Description cannot be empty
+missing_title_field,invalid,@omit,Title field is not sent,400,Title is required
+missing_description_field,invalid,Description field is not sent,@omit,400,Description is required
