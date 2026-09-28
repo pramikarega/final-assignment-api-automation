@@ -21,18 +21,19 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies (Newman + htmlextra reporter)
         run: npm ci
 
       - name: Verify secrets are configured
+        id: secrets
         run: |
           if [ -z "$API_EMAIL" ] || [ -z "$API_PASSWORD" ]; then
             echo "::error::Secrets API_EMAIL dan/atau API_PASSWORD belum di-set (Settings > Secrets and variables > Actions)."
@@ -53,8 +54,8 @@ jobs:
             --reporter-junit-export reports/crud-junit.xml
 
       - name: Run Data-Driven tests (CSV)
-        # Tetap dijalankan walau step sebelumnya gagal, supaya laporan lengkap
-        if: ${{ !cancelled() }}
+        # Tetap dijalankan walau suite CRUD gagal (laporan lengkap), tapi tidak jika secrets kosong
+        if: ${{ !cancelled() && steps.secrets.outcome == 'success' }}
         run: |
           npx newman run "$COLLECTION" \
             -e "$ENVIRONMENT" \
@@ -69,7 +70,7 @@ jobs:
 
       - name: Upload test reports
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: newman-reports
           path: reports/
