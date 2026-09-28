@@ -2,7 +2,7 @@
 
 API test automation untuk [labs.hendri.me](https://labs.hendri.me) (base API: `https://api-script-labs.hendri.me`) memakai **Postman + Newman**, dengan **data-driven testing (CSV)** dan **CI/CD GitHub Actions**.
 
-![API Test Automation](https://github.com/<username>/<repo>/actions/workflows/api-test.yml/badge.svg)
+![API Test Automation](https://github.com/pramikarega/final-assignment-api-automation/actions/workflows/api-test.yml/badge.svg)
 
 ## Cakupan Test
 
